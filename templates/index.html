@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --border: #2a2a4a;
+    --text: #e0e0ff;
+    --muted: #6060a0;
+    --work:  #ff6b6b;
+    --break: #00c9a7;
+    --long:  #7c3aed;
+    --accent: var(--work);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 28px;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+    letter-spacing: .5px;
+  }
+
+  .tab.active { background: var(--accent); color: #fff; }
+
+  .timer-wrap {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ring-svg {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+  .ring-fg {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset .8s linear, stroke .4s;
+    filter: drop-shadow(0 0 8px var(--accent));
+  }
+
+  .timer-inner { text-align: center; z-index: 1; }
+
+  #display {
+    font-size: 4rem;
+    font-weight: 800;
+    letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  #phase-label {
+    font-size: .8rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .controls { display: flex; gap: 12px; align-items: center; }
+
+  button.ctrl {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: border-color .2s, transform .1s, box-shadow .2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  button.ctrl:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent); }
+  button.ctrl:active { transform: scale(.93); }
+  button.ctrl.play { width: 68px; height: 68px; font-size: 1.6rem; border-color: var(--accent); }
+
+  .stats { display: flex; gap: 32px; }
+
+  .stat { text-align: center; }
+  .stat-val {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-lbl {
+    font-size: .72rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .settings {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 300px;
+  }
+
+  .settings h2 {
+    font-size: .8rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .setting-row label { font-size: .88rem; color: var(--muted); }
+
+  .stepper { display: flex; align-items: center; gap: 8px; }
+
+  .stepper button {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .15s;
+  }
+
+  .stepper button:hover { border-color: var(--accent); }
+  .stepper span { font-size: .95rem; font-weight: 700; min-width: 28px; text-align: center; }
+
+  #notif {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 40px;
+    font-weight: 700;
+    font-size: .9rem;
+    letter-spacing: .5px;
+    transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  #notif.show { transform: translateX(-50%) translateY(0); }
+
+  .dots { display: flex; gap: 6px; }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background .3s;
+  }
+  .dot.done { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="notif"></div>
+
+<h1>Pomodoro</h1>
+
+<div class="tabs">
+  <button class="tab active" data-mode="work">Travail</button>
+  <button class="tab" data-mode="break">Pause</button>
+  <button class="tab" data-mode="long">Longue pause</button>
+</div>
+
+<div class="timer-wrap">
+  <svg class="ring-svg" viewBox="0 0 260 260">
+    <circle class="ring-bg" cx="130" cy="130" r="118"/>
+    <circle class="ring-fg" id="ring" cx="130" cy="130" r="118"
+            stroke-dasharray="741.4" stroke-dashoffset="0"/>
+  </svg>
+  <div class="timer-inner">
+    <div id="display">25:00</div>
+    <div id="phase-label">Travail</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="ctrl" id="btn-back" title="+1 min">⏮</button>
+  <button class="ctrl play" id="btn-play">▶</button>
+  <button class="ctrl" id="btn-reset" title="Reset">↺</button>
+</div>
+
+<div class="dots" id="dots"></div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-val" id="st-sessions">0</div><div class="stat-lbl">Sessions</div></div>
+  <div class="stat"><div class="stat-val" id="st-focus">0</div><div class="stat-lbl">Min focus</div></div>
+  <div class="stat"><div class="stat-val" id="st-streak">0</div><div class="stat-lbl">Série</div></div>
+</div>
+
+<div class="settings">
+  <h2>Réglages</h2>
+  <div class="setting-row">
+    <label>Travail (min)</label>
+    <div class="stepper">
+      <button data-cfg="work" data-delta="-1">−</button>
+      <span id="cfg-work">25</span>
+      <button data-cfg="work" data-delta="1">+</button>
+    </div>
+  </div>
+  <div class="setting-row">
+    <label>Pause (min)</label>
+    <div class="stepper">
+      <button data-cfg="break" data-delta="-1">−</button>
+      <span id="cfg-break">5</span>
+      <button data-cfg="break" data-delta="1">+</button>
+    </div>
+  </div>
+  <div class="setting-row">
+    <label>Longue pause (min)</label>
+    <div class="stepper">
+      <button data-cfg="long" data-delta="-1">−</button>
+      <span id="cfg-long">15</span>
+      <button data-cfg="long" data-delta="1">+</button>
+    </div>
+  </div>
+  <div class="setting-row">
+    <label>Sessions avant longue pause</label>
+    <div class="stepper">
+      <button data-cfg="cycle" data-delta="-1">−</button>
+      <span id="cfg-cycle">4</span>
+      <button data-cfg="cycle" data-delta="1">+</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CIRCUMFERENCE = 2 * Math.PI * 118;
+
+const cfg = { work: 25, break: 5, long: 15, cycle: 4 };
+const MODE_LABELS = { work: 'Travail', break: 'Pause courte', long: 'Longue pause' };
+const MODE_COLORS = { work: '#ff6b6b', break: '#00c9a7', long: '#7c3aed' };
+
+let mode = 'work', running = false;
+let remaining = 25 * 60, total = 25 * 60;
+let intervalId = null;
+let sessions = 0, focusMin = 0, streak = 0;
+let sessionDots = [];
+
+const display    = document.getElementById('display');
+const phaseLabel = document.getElementById('phase-label');
+const ring       = document.getElementById('ring');
+const btnPlay    = document.getElementById('btn-play');
+const dotsEl     = document.getElementById('dots');
+const notif      = document.getElementById('notif');
+
+function fmt(s) {
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+function setAccent(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  ring.style.stroke = color;
+}
+
+function render() {
+  display.textContent = fmt(remaining);
+  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - remaining / total);
+}
+
+function setMode(m) {
+  mode = m;
+  remaining = total = cfg[m] * 60;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+  phaseLabel.textContent = MODE_LABELS[m];
+  setAccent(MODE_COLORS[m]);
+  render();
+  stop();
+}
+
+function play() {
+  running = true;
+  btnPlay.textContent = '⏸';
+  intervalId = setInterval(() => {
+    remaining--;
+    if (mode === 'work') focusMin = Math.round((total - remaining) / 60);
+    render();
+    if (remaining <= 0) onDone();
+  }, 1000);
+}
+
+function stop() {
+  running = false;
+  btnPlay.textContent = '▶';
+  clearInterval(intervalId);
+}
+
+function onDone() {
+  stop();
+  if (mode === 'work') {
+    sessions++; streak++;
+    sessionDots.push('work');
+    document.getElementById('st-sessions').textContent = sessions;
+    document.getElementById('st-streak').textContent   = streak;
+    document.getElementById('st-focus').textContent    = focusMin;
+    renderDots();
+    const next = sessions % cfg.cycle === 0 ? 'long' : 'break';
+    notify(next === 'long' ? '🎉 Longue pause méritée !' : '☕ Pause ! Tu as bien travaillé.');
+    setTimeout(() => setMode(next), 800);
+  } else {
+    notify('💪 C\'est reparti !');
+    setTimeout(() => setMode('work'), 800);
+  }
+}
+
+function notify(msg) {
+  notif.textContent = msg;
+  notif.classList.add('show');
+  setTimeout(() => notif.classList.remove('show'), 3000);
+}
+
+function renderDots() {
+  dotsEl.innerHTML = Array.from({ length: cfg.cycle }, (_, i) =>
+    `<div class="dot${i < sessionDots.length ? ' done' : ''}"></div>`
+  ).join('');
+}
+
+btnPlay.addEventListener('click', () => running ? stop() : play());
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  stop(); remaining = total = cfg[mode] * 60; render();
+});
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  remaining = Math.min(remaining + 60, total); render();
+});
+
+document.querySelectorAll('.tab').forEach(t =>
+  t.addEventListener('click', () => setMode(t.dataset.mode))
+);
+
+document.querySelectorAll('.stepper button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.cfg, delta = parseInt(btn.dataset.delta);
+    const min = 1, max = key === 'cycle' ? 10 : 60;
+    cfg[key] = Math.max(min, Math.min(max, cfg[key] + delta));
+    document.getElementById(`cfg-${key}`).textContent = cfg[key];
+    if (key === mode) { stop(); remaining = total = cfg[mode] * 60; render(); }
+    if (key === 'cycle') renderDots();
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); running ? stop() : play(); }
+  if (e.code === 'KeyR')  document.getElementById('btn-reset').click();
+});
+
+setAccent(MODE_COLORS.work);
+renderDots();
+render();
+</script>
+</body>
+</html>
