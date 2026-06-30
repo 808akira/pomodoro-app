@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import os, time
 import pyodbc
+import requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-prod")
@@ -34,6 +35,14 @@ def init_db():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/test-vnet")
+def test_vnet():
+    try:
+        r = requests.get("http://web-app-samy-private.azurewebsites.net/ping", timeout=5)
+        return jsonify({"depuis": "App A (publique)", "reponse_app_b": r.json()})
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
 
 @app.route("/api/scores", methods=["GET"])
 def get_scores():
