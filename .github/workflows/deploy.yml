@@ -15,6 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt --target=".python_packages/lib/python3.12/site-packages"
+
+      - name: Create deployment zip
+        run: |
+          zip -r deploy.zip app.py requirements.txt templates/ .python_packages/
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -22,9 +34,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8F3E3520C27146BC9F482F84D117456B }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_B96B67EEE7964DD7BF06FC4CB9017D0A }}
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: pomodoro-samy
-          slot-name: Production
-          package: .
+      - name: Deploy zip to Azure
+        run: |
+          az webapp deploy \
+            --name pomodoro-samy \
+            --resource-group pomodoro-rg \
+            --src-path deploy.zip \
+            --type zip \
+            --async false
