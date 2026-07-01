@@ -215,6 +215,79 @@
     transition: background .3s;
   }
   .dot.done { background: var(--accent); }
+
+  /* VNet panel */
+  .vnet-panel {
+    margin-top: 28px;
+    width: 100%;
+    max-width: 340px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .vnet-panel h3 {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .vnet-arch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: .82rem;
+  }
+  .vnet-node {
+    flex: 1;
+    background: #12122a;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .vnet-node .node-label { color: var(--muted); font-size: .68rem; margin-bottom: 2px; }
+  .vnet-node .node-name  { font-weight: 700; font-size: .8rem; }
+  .vnet-node.public  { border-color: #00c9a7; }
+  .vnet-node.private { border-color: #7c3aed; }
+  .vnet-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    color: var(--muted);
+    font-size: .65rem;
+    white-space: nowrap;
+  }
+  .vnet-arrow .pipe { font-size: 1rem; letter-spacing: -2px; color: #3a3a6a; }
+  #btn-vnet {
+    width: 100%;
+    padding: 9px;
+    border: none;
+    border-radius: 10px;
+    background: #7c3aed;
+    color: #fff;
+    font-weight: 700;
+    font-size: .82rem;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  #btn-vnet:hover { opacity: .85; }
+  #btn-vnet:disabled { opacity: .5; cursor: default; }
+  .vnet-result {
+    margin-top: 12px;
+    font-size: .78rem;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: none;
+    line-height: 1.5;
+  }
+  .vnet-result.ok  { background: #0d2a1f; border: 1px solid #00c9a7; color: #00c9a7; }
+  .vnet-result.err { background: #2a0d0d; border: 1px solid #ff6b6b; color: #ff6b6b; }
+  .vnet-result .res-row { display: flex; justify-content: space-between; gap: 8px; }
+  .vnet-result .res-key  { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -289,6 +362,28 @@
       <button data-cfg="cycle" data-delta="1">+</button>
     </div>
   </div>
+</div>
+
+<!-- VNet Architecture Panel -->
+<div class="vnet-panel">
+  <h3>🔒 Architecture réseau</h3>
+  <div class="vnet-arch">
+    <div class="vnet-node public">
+      <div class="node-label">PUBLIC · App A</div>
+      <div class="node-name">pomodoro-samy</div>
+    </div>
+    <div class="vnet-arrow">
+      <span class="pipe">━━━━</span>
+      <span>VNet privé</span>
+      <span class="pipe">━━━━</span>
+    </div>
+    <div class="vnet-node private">
+      <div class="node-label">PRIVÉ · App B</div>
+      <div class="node-name">samy-private</div>
+    </div>
+  </div>
+  <button id="btn-vnet">Tester la connexion VNet →</button>
+  <div class="vnet-result" id="vnet-result"></div>
 </div>
 
 <script>
@@ -415,6 +510,32 @@ document.addEventListener('keydown', e => {
 setAccent(MODE_COLORS.work);
 renderDots();
 render();
+
+// VNet test
+document.getElementById('btn-vnet').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-vnet');
+  const res = document.getElementById('vnet-result');
+  btn.disabled = true;
+  btn.textContent = 'Connexion en cours…';
+  res.style.display = 'none';
+  try {
+    const r = await fetch('/test-vnet');
+    const data = await r.json();
+    res.className = 'vnet-result ok';
+    res.innerHTML = `
+      <div class="res-row"><span class="res-key">Appelant</span><span>${data.depuis}</span></div>
+      <div class="res-row"><span class="res-key">App B répond</span><span>${data.reponse_app_b.message}</span></div>
+      <div class="res-row"><span class="res-key">Hostname App B</span><span>${data.reponse_app_b.hostname}</span></div>
+      <div class="res-row"><span class="res-key">Accès internet direct</span><span>❌ Bloqué (403)</span></div>
+    `;
+  } catch(e) {
+    res.className = 'vnet-result err';
+    res.innerHTML = `<div>Erreur : ${e.message}</div>`;
+  }
+  res.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = 'Tester la connexion VNet →';
+});
 </script>
 </body>
 </html>
